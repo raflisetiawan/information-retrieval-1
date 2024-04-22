@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@types/natural": "^5.1.5",
+    "events": "^3.3.0",
+    "natural": "^7.0.5"
+  }
+}

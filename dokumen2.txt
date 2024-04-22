@@ -1,0 +1,4 @@
+dalam setahun belakangan ini, pengaksesan FRS diganti ke SIAKAD. saat menggunakan sinergi, fitur serta kecepatan
+akses sangat handal dan nyaman. tapi setelah diganti menggunakan SIAKAD, keadaan berbalik menjadi buruk
+(lambat loading dan bahkan sampai logout dengan sendirinya). *FRS tidak hanya berpengaruh bagi mahasiswa
+semester muda tapi juga keseluruhan mahasiswa
