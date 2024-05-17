@@ -1,49 +1,72 @@
-const fs = require('fs');
-const natural = require('natural')
+// Import dependencies
+import preprocess from "./preprocess";
+import { TfIdf } from 'natural/lib/natural/tfidf';
 
-// Import library untuk stemming
-const { WordTokenizer, StemmerId } = natural;
-const tokenizer = new WordTokenizer();
+// Dokumen-dokumen
+const dokumenDokumen: string[] = [
+  "Airlangga Aldi Pratama bangun pagi. Dia berkuliah di UISI Gresik",
+  "UISI berjaya sebagai peringkat 3 Nasional PTN/ PTS Liga 3 bidang kemahasiswaan",
+  "gerakan membangun Gresik kurang mendapat tanggapan masyarakat",
+  "masyarakat diharapkan tanggap dengan persoalan di sekitar universitas",
+  "usaha di sini sukses karena adanya Universitas Internasional Semen Indonesia (UISI)"
+];
 
-// Fungsi untuk membaca isi dokumen dari file txt
-function readDocument(filename: string): string {
-    try {
-        return fs.readFileSync(filename, 'utf8');
-    } catch (error) {
-        console.error(`Gagal membaca file ${filename}:`, error);
-        return '';
-    }
-}
+// Query
+const query = "membangun gresik yang sukses dan berjaya";
 
-// Fungsi untuk melakukan filtering (pada contoh ini, filtering dilakukan terhadap stop words)
-function filter(words: string[]): string[] {
-    // Daftar kata-kata stop words yang akan dihapus
-    const stopWords = ['dan', 'di', 'dari', 'yang', 'atau', 'sehingga', 'pada', 'ke', 'tidak'];
-    // Filter kata-kata yang bukan stop words
-    const filteredWords = words.filter(word => !stopWords.includes(word.toLowerCase()));
-    return filteredWords;
-}
+// Preprocessing dokumen dan query
+const processedDocuments = dokumenDokumen.map(doc => preprocess(doc).join(' '));
+const processedQuery = preprocess(query).join(' ');
 
-// Fungsi untuk melakukan stemming
-function stem(words: string[]): string[] {
-    // Lakukan stemming pada setiap kata dalam array
-    const stemmedWords = words.map(word => StemmerId.stem(word));
-    return stemmedWords;
-}
+// Inisialisasi TfIdf dan menambahkan dokumen yang sudah diproses
+const tfidf = new TfIdf();
+processedDocuments.forEach(doc => tfidf.addDocument(doc));
 
-// Nama file dokumen
-const filename = 'dokumen1.txt';
-// Baca isi dokumen dari file txt
-const dokumen = readDocument(filename);
+// Fungsi untuk menghitung panjang vektor dokumen dan query
+const calculateVectorLengths = (tfidf: TfIdf, docs: string[], query: string) => {
+  const docVectorLengths: number[] = docs.map((_, i) => {
+    let length = 0;
+    tfidf.listTerms(i).forEach(({ tfidf }) => {
+      length += tfidf * tfidf;
+    });
+    return Math.sqrt(length);
+  });
 
-// Tokenisasi dokumen
-const tokens = tokenizer.tokenize(dokumen);
-console.log("Hasil tokenisasi:", tokens);
+  let queryVectorLength = 0;
+  tfidf.tfidfs(query, (_, measure) => {
+    queryVectorLength += measure * measure;
+  });
 
-// Filtering stop words
-const filteredTokens = filter(tokens);
-console.log("Setelah filtering:", filteredTokens);
+  return {
+    docVectorLengths,
+    queryVectorLength: Math.sqrt(queryVectorLength)
+  };
+};
 
-// Stemming kata-kata
-const stemmedTokens = stem(filteredTokens);
-console.log("Setelah stemming:", stemmedTokens);
+const { docVectorLengths, queryVectorLength } = calculateVectorLengths(tfidf, processedDocuments, processedQuery);
+
+// Fungsi untuk menghitung cosine similarity antara query dan setiap dokumen
+const calculateCosineSimilarity = (tfidf: TfIdf, docs: string[], query: string, docVectorLengths: number[], queryVectorLength: number) => {
+  const similarities: number[] = Array(docs.length).fill(0);
+
+  tfidf.tfidfs(query, (i, measure) => {
+    similarities[i] += measure / (docVectorLengths[i] * queryVectorLength);
+  });
+
+  return similarities;
+};
+
+const similarities = calculateCosineSimilarity(tfidf, processedDocuments, processedQuery, docVectorLengths, queryVectorLength);
+
+
+console.log(tfidf);
+
+// Mengurutkan dokumen berdasarkan kemiripan
+const rankedDocuments = similarities
+  .map((similarity, index) => ({ index, similarity }))
+  .sort((a, b) => b.similarity - a.similarity);
+
+console.log("Ranking dokumen berdasarkan kemiripan dengan query:");
+rankedDocuments.forEach(({ index, similarity }) => {
+  console.log(`Dokumen ${index + 1}: ${similarity}`);
+});
